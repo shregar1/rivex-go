@@ -1,0 +1,8 @@
+
+# editor / build cruft
+.DS_Store
+
+# NOTE: lib/<goos>_<goarch>/librivex_ffi.a IS intentionally tracked. Go modules
+# are source-only — `go get` cannot run cargo, so the prebuilt static core
+# (built from the single core repo by scripts/vendor-libs.sh) must ship in the
+# module. It is the compiled artifact, NOT a copy of the Rust source.

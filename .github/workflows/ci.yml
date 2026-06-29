@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # cgo links the vendored static Rust core. On CI we (re)build it from the
+  # sibling core repo for the runner's platform before building/testing.
+  test:
+    name: Test (Go ${{ matrix.go-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ["1.22", "1.23"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: rivex-go
+      - uses: actions/checkout@v4
+        with:
+          repository: rivex-dev/core.rivex.vexarr.com
+          path: core.rivex.vexarr.com
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: rivex-go/go.sum
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core.rivex.vexarr.com
+      - name: Vendor static core (linux/amd64)
+        working-directory: rivex-go
+        run: bash scripts/vendor-libs.sh linux amd64 x86_64-unknown-linux-gnu
+      - name: Vet
+        working-directory: rivex-go
+        run: go vet ./...
+      - name: Test
+        working-directory: rivex-go
+        run: go test -count=1 ./...
+
+  # Build the static core for every supported platform and commit the vendored
+  # libs back into the module, so `go get` is fully self-contained (Go modules
+  # are source-only — the prebuilt archives must live in the repo).
+  vendor:
+    name: Vendor libs (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: darwin_arm64,  os: macos-latest,  goos: darwin,  goarch: arm64, target: aarch64-apple-darwin }
+          - { name: darwin_amd64,  os: macos-13,      goos: darwin,  goarch: amd64, target: x86_64-apple-darwin }
+          - { name: linux_amd64,   os: ubuntu-latest, goos: linux,   goarch: amd64, target: x86_64-unknown-linux-gnu }
+          - { name: linux_arm64,   os: ubuntu-latest, goos: linux,   goarch: arm64, target: aarch64-unknown-linux-gnu }
+          - { name: windows_amd64, os: ubuntu-latest, goos: windows, goarch: amd64, target: x86_64-pc-windows-gnu }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: rivex-go
+      - uses: actions/checkout@v4
+        with:
+          repository: rivex-dev/core.rivex.vexarr.com
+          path: core.rivex.vexarr.com
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Vendor
+        working-directory: rivex-go
+        run: bash scripts/vendor-libs.sh ${{ matrix.goos }} ${{ matrix.goarch }} ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lib-${{ matrix.name }}
+          path: |
+            rivex-go/lib/${{ matrix.name }}/librivex_ffi.a
+            rivex-go/include/rivex_ffi.h
+
+  commit-vendored:
+    name: Commit vendored libs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, vendor]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: incoming
+          pattern: lib-*
+      - name: Stage vendored libs
+        run: |
+          for d in incoming/lib-*; do
+            name=$(basename "$d" | sed 's/^lib-//')
+            mkdir -p "lib/${name}"
+            cp "$d/librivex_ffi.a" "lib/${name}/" 2>/dev/null || true
+            cp "$d/rivex_ffi.h" "include/" 2>/dev/null || true
+          done
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lib include
+          git commit -m "ci: refresh vendored librivex_ffi for all platforms" || echo "no changes"
+          git push

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	rivex "github.com/rivex-dev/rivex-go"
+	rivex "github.com/shregar1/rivex-go"
 )
 
 // --- Application Tests ---
@@ -903,7 +903,7 @@ func TestGenerateOpenAPI(t *testing.T) {
 		rivex.WithSummary("Create a user"),
 	)
 
-	spec := rivex.GenerateOpenAPI(app)
+	spec := 	rivex.GenerateOpenAPI(app)
 
 	if spec["openapi"] != "3.1.0" {
 		t.Errorf("expected openapi=3.1.0, got %v", spec["openapi"])

@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/rivex-dev/rivex-go/internal/ffi"
+	"github.com/shregar1/rivex-go/internal/ffi"
 )
 
 // HandlerFunc is the signature for request handlers. Handlers receive a Context

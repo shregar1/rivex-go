@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/rivex-dev/rivex-go"
+	"github.com/shregar1/rivex-go"
 )
 
 var requestCounter int64

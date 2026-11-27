@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rivex-dev/rivex-go"
+	"github.com/shregar1/rivex-go"
 )
 
 // ItemCreate is the request body for creating items.

@@ -1,33 +1,62 @@
 package main
 
 import (
-	"log"
-
-	rivex "github.com/rivex-dev/rivex-go"
+	"flag"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"time"
 )
 
 func main() {
-	app := rivex.New()
+	var (
+		benchtime  = flag.Duration("benchtime", 5*time.Second, "Duration to run each benchmark")
+		cpu        = flag.Int("cpu", runtime.NumCPU(), "Number of CPUs to use")
+		mem        = flag.Bool("mem", true, "Include memory allocation stats")
+		output     = flag.String("o", "table", "Output format: table, csv, json")
+		benchRegex = flag.String("filter", "BenchmarkJSON|BenchmarkPlainText|BenchmarkStreaming", "Benchmark filter regex")
+	)
+	flag.Parse()
+	if err := runBenchmarks(*benchtime, *cpu, *mem, *benchRegex, *output); err != nil {
+		fmt.Fprintf(os.Stderr, "bench failed: %v\n", err)
+		os.Exit(1)
+	}
+}
 
-	app.Get("/", func(ctx *rivex.Context) error {
-		return ctx.SendJSON(map[string]string{"message": "Hello, World!"})
-	})
-
-	app.Get("/json", func(ctx *rivex.Context) error {
-		data := make([]int, 10)
-		for i := range data {
-			data[i] = i
-		}
-		return ctx.SendJSON(map[string]interface{}{
-			"framework": "rivex",
-			"language":  "go",
-			"data":      data,
-		})
-	})
-
-	app.Get("/plaintext", func(ctx *rivex.Context) error {
-		return ctx.SendText("Hello, World!")
-	})
-
-	log.Fatal(app.Run("127.0.0.1", 3002))
+func runBenchmarks(benchtime time.Duration, cpu int, mem bool, filter, output string) error {
+	testsDir, _ := filepath.Abs(".")
+	if _, err := os.Stat(testsDir); err != nil {
+		return fmt.Errorf("tests dir not found: %w", err)
+	}
+	binPath := filepath.Join(os.TempDir(), "rivex-bench-test")
+	fmt.Printf("Rivex Benchmark Suite\n")
+	fmt.Printf("==========================================\n")
+	fmt.Printf("Platform:  %s/%s, %d CPUs\n", runtime.GOOS, runtime.GOARCH, cpu)
+	fmt.Printf("Duration:  %v per benchmark\n", benchtime)
+	fmt.Printf("Memory:    %v\n\n", mem)
+	fmt.Println("Building benchmark binary...")
+	build := exec.Command("go", "test", "-c", "-o", binPath, "./tests/...")
+	build.Stdout = os.Stdout
+	build.Stderr = os.Stderr
+	if err := build.Run(); err != nil {
+		return fmt.Errorf("build failed: %w", err)
+	}
+	args := []string{
+		"-test.bench=" + filter,
+		"-test.benchtime=" + benchtime.String(),
+		"-test.cpu=" + fmt.Sprintf("%d", cpu),
+		"-test.run=^$",
+	}
+	if mem {
+		args = append(args, "-test.benchmem")
+	}
+	cmd := exec.Command(binPath, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
 }

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rivex-dev/rivex-go"
+	"github.com/shregar1/rivex-go"
 )
 
 var (

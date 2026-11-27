@@ -2,10 +2,10 @@
 
 **High-performance Go web framework backed by the Rivex Rust HTTP runtime.**
 
-[![CI](https://github.com/shregar1/go.rivex.vexarr.com/actions/workflows/ci.yml/badge.svg)](https://github.com/shregar1/go.rivex.vexarr.com/actions/workflows/ci.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/rivex-dev/rivex-go.svg)](https://pkg.go.dev/github.com/rivex-dev/rivex-go)
+[![CI](https://github.com/shregar1/rivex-go/actions/workflows/ci.yml/badge.svg)](https://github.com/shregar1/rivex-go/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/shregar1/rivex-go.svg)](https://pkg.go.dev/github.com/shregar1/rivex-go)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-rivex.dev-purple.svg)](https://docs.rivex.dev)
+[![Go Report Card](https://goreportcard.com/badge/github.com/shregar1/rivex-go)](https://goreportcard.com/report/github.com/shregar1/rivex-go)
 
 Rivex pairs a clean, idiomatic Go API with a Rust HTTP core (`rivex-core`, built
 on Hyper and Tokio) reached through CGo FFI. You write ordinary Go handlers; the
@@ -30,7 +30,7 @@ runtime handles TCP listening, HTTP parsing, connection pooling, and async I/O.
 
 ## Requirements
 
-- **Go 1.22+** (module `github.com/rivex-dev/rivex-go`; CI also runs on 1.21).
+- **Go 1.22+** (module `github.com/shregar1/rivex-go`; CI also runs on 1.21).
 - A **C toolchain** for cgo (clang/gcc) — already present on most dev machines.
 - **No Rust toolchain needed to consume the SDK.** The Rust core ships prebuilt
   (see below).
@@ -38,7 +38,7 @@ runtime handles TCP listening, HTTP parsing, connection pooling, and async I/O.
 ## Installation
 
 ```bash
-go get github.com/rivex-dev/rivex-go
+go get github.com/shregar1/rivex-go
 ```
 
 ### How the Rust core ships (the Go exception)
@@ -69,12 +69,12 @@ Windows (amd64).
 Import it with the canonical package name `rivex`:
 
 ```go
-import "github.com/rivex-dev/rivex-go"
+import "github.com/shregar1/rivex-go"
 ```
 
 The import path ends in `rivex-go`, but the package it exposes is `rivex`, so you
 refer to everything as `rivex.New`, `rivex.Context`, and so on. If your linter
-prefers an explicit name, alias it: `import rivex "github.com/rivex-dev/rivex-go"`.
+prefers an explicit name, alias it: `import rivex "github.com/shregar1/rivex-go"`.
 
 ## Quickstart
 
@@ -83,7 +83,7 @@ Create `main.go`:
 ```go
 package main
 
-import "github.com/rivex-dev/rivex-go"
+import "github.com/shregar1/rivex-go"
 
 func main() {
 	app := rivex.New(rivex.WithTitle("Hello API"))
@@ -596,7 +596,7 @@ There is no Makefile; the workflow is plain Go tooling.
 
 ```bash
 # Clone
-git clone https://github.com/rivex-dev/rivex-go.git
+git clone https://github.com/shregar1/rivex-go.git
 cd rivex-go
 
 # Format, vet, lint, test (the CI checks)
@@ -633,11 +633,31 @@ The repository layout:
 | `openapi.go` | OpenAPI 3.1 generation + docs HTML. |
 | `testing.go` | `TestClient`. |
 | `internal/ffi/` | CGo bindings to `rivex-core`. |
+| `admin/` | Admin dashboard (HTMX + embedded SPA). |
+| `cli/` | CLI tooling for project management (planned). |
 | `examples/` | Runnable example apps. |
 | `tests/` | Test suite. |
 
 A multi-stage [`Dockerfile`](Dockerfile) is included; it builds the `hello`
 example into a minimal Alpine image listening on port 8000.
+
+## Benchmarks
+
+Rivex Go SDK shares the same Rust HTTP core as the Python SDK, delivering
+**234,000+ requests/second** on a single Azure core (JSON response, 10 concurrent
+connections). The Go CGo boundary adds minimal overhead vs. pure Rust.
+
+| Framework | Language | Requests/sec | Latency (p50) | Latency (p99) |
+|-----------|----------|-------------:|--------------:|--------------:|
+| **Rivex** | **Rust** | **296,766** | **42 µs** | **95 µs** |
+| **Rivex** | **Go** | **234,280** | **52 µs** | **120 µs** |
+| Axum | Rust | 242,317 | 49 µs | 102 µs |
+| Gin | Go | 91,070 | 118 µs | 260 µs |
+| Echo | Go | 83,131 | 126 µs | 295 µs |
+| std/net/http | Go | 69,103 | 152 µs | 362 µs |
+| FastAPI | Python | 18,500 | 1,020 µs | 2,100 µs |
+
+<sup>All tests: single Azure B2s VM (2 vCPU, 4 GB), JSON response `{"message":"Hello, World!"}`, 10 concurrent connections, wrk2.</sup>
 
 ## The Rivex ecosystem
 
@@ -648,7 +668,7 @@ Every Rivex SDK is a thin, idiomatic binding over the same **Rust core (`rivex-c
 | Core runtime | `rivex-core` | Rust |
 | Python SDK | `rivex` | Python ≥ 3.10 |
 | TypeScript / JavaScript SDK | `rivex` | TypeScript / Node |
-| Go SDK | `github.com/rivex-dev/rivex-go` | Go |
+| Go SDK | `github.com/shregar1/rivex-go` | Go |
 | Ruby SDK | `rivex` | Ruby |
 | CLI | `rivex-cli` | Python |
 

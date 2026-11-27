@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/rivex-dev/rivex-go"
+	"github.com/shregar1/rivex-go"
 )
 
 func main() {

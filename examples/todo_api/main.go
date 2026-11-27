@@ -3,7 +3,7 @@ package main
 import (
 	"sync"
 
-	"github.com/rivex-dev/rivex-go"
+	"github.com/shregar1/rivex-go"
 )
 
 // Todo represents a todo item.
